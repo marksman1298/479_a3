@@ -5,15 +5,16 @@ from datetime import datetime
 from collections import defaultdict
 
 Index = defaultdict(list) #contains tokenized documents without punctuation, needed for subproject2
-Postings = {}
-NumberOfDocs = 0
-AverageLength = 0.0
-Result = {}
+# Postings = {}
+# NumberOfDocs = 0
+# AverageLength = 0.0
+Result = defaultdict(list)
 
 def splitIntoArticles() -> List[str]: #read all files in directory, put everything into one string, split into list of articles 
     data = ""
     try:
-        dir = input("Enter the directory: ")
+        # dir = input("Enter the directory: ")
+        dir = 'C:/Users/marks/OneDrive/Desktop/Fall-2021/COMP 479/479_a3/479_a3/testFiles'
         listOfFiles = os.listdir(dir)
     except Exception as e: 
         print(e)
@@ -67,7 +68,7 @@ def documentTermDocIdPairs(tokenizedDocument: List, ID: str, postingTable: Dict,
     # return postingTable, counter
 
 
-def queryProcessor(Postings):
+def queryProcessor(postings, numberOfDocs: int, averageLength: float):
     while True:
         query = input("Enter a query or nothing to exit: ")
         if not query:
@@ -87,40 +88,44 @@ def queryProcessor(Postings):
         #         BM25(keywords)
         else:
             keywords = query.split()
-            BM25(keywords)
+            BM25(keywords, postings, numberOfDocs, averageLength)
 
-def BM25(keywords: List): #consider if and/or
+def BM25(keywords: List, postings: dict, numberOfDocs: int, averageLength: float): #consider if and/or
+    k1 = 1.2
+    b = 0.75
     for term in keywords:
         #retrieve posting list of term
-        if term in Postings: #ensure term exists 
-            postingsList = Postings[term]
+        if term in postings: #ensure term exists 
+            postingsList = postings[term]
             for docId in postingsList:
                 #get length of document
                 #get number of occurences of term in document
                 docLength = len(Index[docId])
-                freqOfTerm = Index[docId].count(docLength)
-                Result[term] = {docId, bm25Equation(len(postingsList), freqOfTerm, docLength)}
+                freqOfTerm = Index[docId].count(term)
+                Result[term].append((docId, (math.log10(numberOfDocs/len(postingsList))) * (((k1 + 1)*freqOfTerm)/(k1*( (1-b) + b * (docLength/averageLength)) + freqOfTerm))))
+    #TODO sort result by increasing value of second tuple
+    #TODO and union intersection
     return Result
 
-def bm25Equation(numDocsWithTerm: int, frequencyTermDoc: int, lenOfDoc: int):
-    # k1 = input("Enter value for constant k1: ")
-    k1 = 1.2
-    b = 0.75
-    rank = (math.log10(NumberOfDocs/numDocsWithTerm)) * (((k1 + 1)*frequencyTermDoc)/(k1*( (1-b) + b * (lenOfDoc/AverageLength)) + frequencyTermDoc))
-    return rank
+# def bm25Equation(numDocsWithTerm: int, frequencyTermDoc: int, lenOfDoc: int, numberOfDocs: int, averageLength: float):
+#     # k1 = input("Enter value for constant k1: ")
+#     k1 = 1.2
+#     b = 0.75
+#     rank = (math.log10(numberOfDocs/numDocsWithTerm)) * (((k1 + 1)*frequencyTermDoc)/(k1*( (1-b) + b * (lenOfDoc/averageLength)) + frequencyTermDoc))
+#     return rank
 
 
 
 def run():
     # starttime = datetime.now()
-    Postings, NumberOfDocs, AverageLength  = splitIntoArticles()
+    postings, numberOfDocs, averageLength  = splitIntoArticles()
     # splitIntoArticles()
     # with open("hihi2.txt", "w") as outfile:
     #     json.dump(Index, outfile)
     # print(NumberOfDocs)
     # print(AverageLength)
     # print(datetime.now()- starttime)
-    print(queryProcessor(Postings))
+    queryProcessor(postings, numberOfDocs, averageLength)
     print(Result)
 
 run()
