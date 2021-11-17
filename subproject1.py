@@ -4,11 +4,11 @@ from typing import List, Dict
 from datetime import datetime
 from collections import defaultdict
 
-Index = defaultdict(list) #contains tokenized documents without punctuation, needed for subproject2
+# Index = defaultdict(list) #contains tokenized documents without punctuation, needed for subproject2
 # Postings = {}
 # NumberOfDocs = 0
 # AverageLength = 0.0
-Result = defaultdict(list)
+
 
 def splitIntoArticles() -> List[str]: #read all files in directory, put everything into one string, split into list of articles 
     data = ""
@@ -28,6 +28,7 @@ def splitIntoArticles() -> List[str]: #read all files in directory, put everythi
 
 def makePostingsList(listOfArticles: List): 
     postingTable = {}
+    index = defaultdict(list)
     # counter = 0
     numberOfDocumentsInCollection = 0
     averageLengthCollection = 0
@@ -37,9 +38,9 @@ def makePostingsList(listOfArticles: List):
             # index[foundNewID.group(2)] = word_tokenize(extractBody(listOfArticles[i]))
             # listOfArticles[i] = extractBody(listOfArticles[i])
             # postingTable, counter = documentTermDocIdPairs(word_tokenize(extractBody(listOfArticles[i])), foundNewID.group(2), postingTable, counter) #tokenizes the articles one at a time 
-            postingTable, numberOfDocumentsInCollection, averageLengthCollection = documentTermDocIdPairs(word_tokenize(extractBody(listOfArticles[i])), foundNewID.group(2), postingTable, numberOfDocumentsInCollection, averageLengthCollection)
+            postingTable, numberOfDocumentsInCollection, averageLengthCollection, index = documentTermDocIdPairs(word_tokenize(extractBody(listOfArticles[i])), foundNewID.group(2), postingTable, numberOfDocumentsInCollection, averageLengthCollection, index)
     averageLengthCollection /= numberOfDocumentsInCollection
-    return postingTable, numberOfDocumentsInCollection, averageLengthCollection
+    return postingTable, numberOfDocumentsInCollection, averageLengthCollection, index
    
 def extractBody(document: str) -> str: #remove everything that isn't between the body tags, if there are no body tags present return empty string 
     startText = document.find("<BODY>")
@@ -49,13 +50,13 @@ def extractBody(document: str) -> str: #remove everything that isn't between the
         return document
     return ""
 # Figure something out for 10000 thingy
-def documentTermDocIdPairs(tokenizedDocument: List, ID: str, postingTable: Dict, numberOfDocumentsInCollection: int, averageLengthCollection: int): #makes list of tuples (term, docID) 
+def documentTermDocIdPairs(tokenizedDocument: List, ID: str, postingTable: Dict, numberOfDocumentsInCollection: int, averageLengthCollection: int, index): #makes list of tuples (term, docID) 
     specialChar = string.punctuation
     exp = "[{schar}]".format(schar = specialChar)
     numberOfDocumentsInCollection += 1
     for token in tokenizedDocument:
         if not bool(re.match(exp, token)):
-            Index[int(ID)].append(token)
+            index[int(ID)].append(token)
             # if counter >= 10000:
             #     return postingTable, counter
             if token not in postingTable:
@@ -64,68 +65,66 @@ def documentTermDocIdPairs(tokenizedDocument: List, ID: str, postingTable: Dict,
                 postingTable[token].append(int(ID))
             # counter += 1
             averageLengthCollection += 1
-    return (postingTable, numberOfDocumentsInCollection, averageLengthCollection)
+    return (postingTable, numberOfDocumentsInCollection, averageLengthCollection, index)
     # return postingTable, counter
 
 
-def queryProcessor(postings, numberOfDocs: int, averageLength: float):
-    while True:
-        query = input("Enter a query or nothing to exit: ")
-        if not query:
-            break
-        # queryList
-        # andQuery = False
-        # orQuery = False
-        # if "and" in query:
-        #     queryList = query.split("and")
-        #     andQuery = True
-        # elif "or" in query:
-        #     queryList = query.split("or")
-        #     orQuery = True
-        # if queryList:
-        #     for terms in queryList:
-        #         keywords = terms.split() #can be multiple keywords ie: Democrats’ welfare and healthcare reform policies
-        #         BM25(keywords)
-        else:
-            keywords = query.split()
-            BM25(keywords, postings, numberOfDocs, averageLength)
+# def queryProcessor(postings, numberOfDocs: int, averageLength: float, index, bm25=False, andQuery = False, orQuery = False):
+#     while True:
+#         query = input("Enter a query or nothing to exit: ")
+#         # result = defaultdict(list)
+#         result = defaultdict(int)
+#         posts = []
+#         if not query:
+#             break
+#         if query:
+#             keywords = query.split()
+#             if bm25:
+#                 result = BM25(keywords, postings, numberOfDocs, averageLength, result, index)
+#                 for docID in sorted(result, key=result.get, reverse=True):
+#                     print(docID, result[docID])
+#             elif len(keywords) == 1 and keywords[0] in postings:
+#                 print(postings[keywords[0]])
+#             elif andQuery:
+#                 for term in keywords:
+#                     if term in postings:
+#                         if not posts:
+#                             posts = postings[term]
+#                         else:
+#                             posts = list(set(posts).intersection(postings[term]))
+#                 print(sorted(posts))
+#             elif orQuery:
+#                 for term in keywords:
+#                     if term in postings:
+#                         posts = list(set(posts).union(postings[term]))
+#                 print(sorted(posts))
 
-def BM25(keywords: List, postings: dict, numberOfDocs: int, averageLength: float): #consider if and/or
-    k1 = 1.2
-    b = 0.75
-    for term in keywords:
-        #retrieve posting list of term
-        if term in postings: #ensure term exists 
-            postingsList = postings[term]
-            for docId in postingsList:
-                #get length of document
-                #get number of occurences of term in document
-                docLength = len(Index[docId])
-                freqOfTerm = Index[docId].count(term)
-                Result[term].append((docId, (math.log10(numberOfDocs/len(postingsList))) * (((k1 + 1)*freqOfTerm)/(k1*( (1-b) + b * (docLength/averageLength)) + freqOfTerm))))
-    #TODO sort result by increasing value of second tuple
-    #TODO and union intersection
-    return Result
-
-# def bm25Equation(numDocsWithTerm: int, frequencyTermDoc: int, lenOfDoc: int, numberOfDocs: int, averageLength: float):
-#     # k1 = input("Enter value for constant k1: ")
+# def BM25(keywords: List, postings: dict, numberOfDocs: int, averageLength: float, result, index): #consider if and/or
 #     k1 = 1.2
 #     b = 0.75
-#     rank = (math.log10(numberOfDocs/numDocsWithTerm)) * (((k1 + 1)*frequencyTermDoc)/(k1*( (1-b) + b * (lenOfDoc/averageLength)) + frequencyTermDoc))
-#     return rank
+#     for term in keywords:
+#         #retrieve posting list of term
+#         if term in postings: #ensure term exists 
+#             postingsList = postings[term]
+#             for docID in postingsList:
+#                 #get length of document
+#                 #get number of occurences of term in document
+#                 docLength = len(index[docID])
+#                 freqOfTerm = index[docID].count(term)
+#                 #calculate the BM25 for each document, add value to dictionary
+#                 result[docID] += round((math.log10(numberOfDocs/len(postingsList))) * (((k1 + 1)*freqOfTerm)/(k1*( (1-b) + b * (docLength/averageLength)) + freqOfTerm)), 3)
+#     return result
 
+# def run():
+#     # starttime = datetime.now()
+#     postings, numberOfDocs, averageLength, index  = splitIntoArticles()
+#     # splitIntoArticles()
+#     # with open("hihi2.txt", "w") as outfile:
+#     #     json.dump(Index, outfile)
+#     # print(NumberOfDocs)
+#     # print(AverageLength)
+#     # print(datetime.now()- starttime)
+#     print(queryProcessor(postings, numberOfDocs, averageLength, index, bm25=True))
+#     # print(Result)
 
-
-def run():
-    # starttime = datetime.now()
-    postings, numberOfDocs, averageLength  = splitIntoArticles()
-    # splitIntoArticles()
-    # with open("hihi2.txt", "w") as outfile:
-    #     json.dump(Index, outfile)
-    # print(NumberOfDocs)
-    # print(AverageLength)
-    # print(datetime.now()- starttime)
-    queryProcessor(postings, numberOfDocs, averageLength)
-    print(Result)
-
-run()
+# run()
