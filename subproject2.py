@@ -71,8 +71,8 @@ def queryProcessor(postings, numberOfDocs: int, averageLength: float, index, bm2
             sorted_keys = sorted(result, key=result.get, reverse=True)
             for w in sorted_keys:
                 sorted_dict[w] = result[w]
-            with open("bm25Query1.5_0.85.txt", "a") as outfile:
-                json.dump(sorted_dict, outfile)
+            with open("testQuerybm25.txt", "a") as outfile:
+                json.dump(f'{query} {sorted_dict}', outfile)
         elif singleQuery or len(keywords) == 1:
             if len(keywords) == 1 and keywords[0] in postings:
                 print(postings[keywords[0]])
@@ -82,7 +82,8 @@ def queryProcessor(postings, numberOfDocs: int, averageLength: float, index, bm2
             if andQuery: #if doing unranked boolean retrieval (AND)
                 posts = postings[keywords[0]]
                 for term in keywords:
-                    posts = list(set(posts).intersection(postings[term]))
+                    if term in postings:
+                        posts = list(set(posts).intersection(postings[term]))
                 print(list(sorted(posts)))
             elif orQuery: #if doing unranked boolean retrieval (OR)
                 posts = set(postings[keywords[0]])
@@ -90,12 +91,12 @@ def queryProcessor(postings, numberOfDocs: int, averageLength: float, index, bm2
                     if term in postings:
                         posts = list(set(posts).union(postings[term]))
                 print(sorted(posts))
-            with open("andQuery.txt", "a") as outfile:
+            with open("testAndQuery.txt", "a") as outfile:
                 json.dump(f'{query} {list(sorted(posts))}', outfile)
 
 def BM25(keywords: List, postings: dict, numberOfDocs: int, averageLength: float, result, index): 
-    k1 = 1.5
-    b = 0.85
+    k1 = 1.2
+    b = 0.75
     for term in keywords:
         #retrieve posting list of term
         if term in postings: #ensure term exists 
@@ -113,6 +114,6 @@ def run():
     starttime = datetime.now()
     postings, numberOfDocs, averageLength, index  = splitIntoArticles()
     print(datetime.now()- starttime)
-    print(queryProcessor(postings, numberOfDocs, averageLength, index, bm25=True))
+    print(queryProcessor(postings, numberOfDocs, averageLength, index, andQuery=True))
 
 run()
